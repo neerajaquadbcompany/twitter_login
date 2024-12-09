@@ -1,25 +1,41 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react";
+import { TwitterLoginButton } from "react-social-login-buttons";
 
-function App() {
+const App = () => {
+  const [user, setUser] = useState(null);
+  
+  const handleLogin = async () => {
+    const twitterWindow = window.open(
+      `https://api.twitter.com/oauth2/authorize?response_type=token&client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(
+        window.location.origin
+      )}&scope=tweet.read`,
+      "_blank",
+      "width=500,height=600"
+    );
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin) return;
+
+      const { token, user } = event.data;
+      if (token) {
+        localStorage.setItem("twitterToken", token);
+        setUser(user);
+      }
+    });
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      {!user ? (
+        <TwitterLoginButton onClick={handleLogin} />
+      ) : (
+        <div>
+          <h2>Welcome, {user.name}</h2>
+          <p>Your username: {user.username}</p>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default App;

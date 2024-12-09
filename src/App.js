@@ -1,27 +1,57 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TwitterLoginButton } from "react-social-login-buttons";
 
 const App = () => {
   const [user, setUser] = useState(null);
-  
+
+  useEffect(() => {
+    // Check if we have an authorization code in the URL
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (code) {
+      // If there is a code in the URL, exchange it for an access token
+      exchangeAuthorizationCodeForToken(code);
+    }
+  }, []);
+
+  // Function to handle the login button click
   const handleLogin = async () => {
-    const twitterWindow = window.open(
-      `https://api.twitter.com/oauth2/authorize?response_type=1768209373514330112-D0MyQUvD3G24ThatWVSEFgT9Tlf2Pp&client_id=OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ&redirect_uri=${encodeURIComponent(
-        window.location.origin
-      )}&scope=tweet.read`,
-      "_blank",
-      "width=500,height=600"
-    );
+    const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ&redirect_uri=${encodeURIComponent(
+      window.location.origin 
+    )}&scope=tweet.read users.read&state=state123&code_challenge=challenge&code_challenge_method=plain`;
 
-    window.addEventListener("message", (event) => {
-      if (event.origin !== window.location.origin) return;
+    // Open Twitter login in a new window
+    window.open(authUrl, "_blank", "width=500,height=600");
+  };
 
-      const { token, user } = event.data;
-      if (token) {
-        localStorage.setItem("twitterToken", token);
-        setUser(user);
+  // Function to exchange the authorization code for an access token
+  const exchangeAuthorizationCodeForToken = async (code) => {
+    const tokenUrl = "https://api.twitter.com/oauth2/token";
+    
+    const params = new URLSearchParams();
+    params.append("client_id", "OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ");
+    params.append("client_secret", "Mot-YuB2BVPX_oLfTEgyBQ4iSBfX2v1iFrieX3gMzQHrmAvv5N");  // Keep this safe!
+    params.append("code", code);
+    params.append("redirect_uri", window.location.origin );
+    params.append("grant_type", "authorization_code");
+
+    try {
+      // Fetch the token using the authorization code (this should be done in the backend ideally)
+      const response = await fetch(tokenUrl, {
+        method: "POST",
+        body: params,
+      });
+
+      const data = await response.json();
+      
+      if (data.access_token) {
+        localStorage.setItem("twitterToken", data.access_token);
+        setUser({ name: "User", username: "user123" });  // Replace with actual user data once fetched
       }
-    });
+    } catch (error) {
+      console.error("Error exchanging code for token:", error);
+    }
   };
 
   return (

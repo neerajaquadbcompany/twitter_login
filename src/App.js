@@ -4,28 +4,56 @@ import { TwitterLoginButton } from "react-social-login-buttons";
 const App = () => {
   const [user, setUser] = useState(null);
 
+  // This useEffect will handle the message event when the popup sends data back
   useEffect(() => {
-    // Check if we have an authorization code in the URL after redirection
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
+    const messageHandler = (event) => {
+      if (event.origin !== window.location.origin) return;  // Check origin for security
 
-    if (code) {
-      // If there is a code in the URL, exchange it for an access token
-      exchangeAuthorizationCodeForToken(code);
-    }
+      const { token, user } = event.data;
+      if (token && user) {
+        localStorage.setItem("twitterToken", token); // Save token to localStorage
+        setUser(user); // Set the user data to display in the original window
+
+        // Close the popup after successful login
+        if (event.source) {
+          event.source.close();
+        }
+      }
+    };
+
+    // Listen for the message event from the popup window
+    window.addEventListener("message", messageHandler);
+
+    return () => {
+      window.removeEventListener("message", messageHandler);
+    };
   }, []);
 
-  // Function to handle the login button click
   const handleLogin = async () => {
     const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ&redirect_uri=${encodeURIComponent(
       window.location.origin
     )}&scope=tweet.read users.read&state=state123&code_challenge=challenge&code_challenge_method=plain`;
 
-    // Open Twitter authentication in the main window
-    window.location.href = authUrl;  // This will redirect the user to Twitter for authentication
+    // Open Twitter login in a new window
+    const twitterWindow = window.open(authUrl, "_blank", "width=500,height=600");
+
+    // Listen for the message from the popup
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin) return; // Verify the origin of the message
+
+      const { token, user } = event.data;
+      if (token) {
+        localStorage.setItem("twitterToken", token);
+        setUser(user);  // Update state with user data
+
+        // Close the popup window after successful login
+        if (twitterWindow) {
+          twitterWindow.close();
+        }
+      }
+    });
   };
 
-  // Function to exchange the authorization code for an access token
   const exchangeAuthorizationCodeForToken = async (code) => {
     const tokenUrl = "https://api.twitter.com/oauth2/token";
 
@@ -51,13 +79,15 @@ const App = () => {
 
         // Fetch user details with the access token
         fetchUserDetails(data.access_token);
+
+        // Send the access token and user data to the original window
+        window.opener.postMessage({ token: data.access_token, user: { name: "User", username: "user123" } }, window.location.origin); // Replace with actual user data
       }
     } catch (error) {
       console.error("Error exchanging code for token:", error);
     }
   };
 
-  // Function to fetch user details from Twitter using the access token
   const fetchUserDetails = async (accessToken) => {
     const userUrl = "https://api.twitter.com/2/users/me";  // Twitter API endpoint for user details
 
@@ -72,11 +102,10 @@ const App = () => {
       const userData = await response.json();
       console.log("User details:", userData);
 
-      // Assuming the response has the user's name and email (if granted)
+      // Assuming the response has the user's name and username
       setUser({
         name: userData.data.name,
         username: userData.data.username,
-        email: userData.data.email, // This requires user.email scope permission
       });
     } catch (error) {
       console.error("Error fetching user details:", error);
@@ -91,7 +120,6 @@ const App = () => {
         <div>
           <h2>Welcome, {user.name}</h2>
           <p>Your username: {user.username}</p>
-          <p>Your email: {user.email}</p>
         </div>
       )}
     </div>

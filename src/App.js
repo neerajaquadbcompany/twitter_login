@@ -6,7 +6,7 @@ const App = () => {
   
   const handleLogin = async () => {
     const twitterWindow = window.open(
-      `https://api.twitter.com/oauth2/authorize?response_type=token&client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(
+      `https://api.twitter.com/oauth2/authorize?response_type=1768209373514330112-D0MyQUvD3G24ThatWVSEFgT9Tlf2Pp&client_id=OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ&redirect_uri=${encodeURIComponent(
         window.location.origin
       )}&scope=tweet.read`,
       "_blank",

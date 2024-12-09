@@ -5,7 +5,7 @@ const App = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // Check if we have an authorization code in the URL
+    // Check if we have an authorization code in the URL after redirection
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
 
@@ -21,8 +21,8 @@ const App = () => {
       window.location.origin
     )}&scope=tweet.read users.read&state=state123&code_challenge=challenge&code_challenge_method=plain`;
 
-    // Open Twitter login in a new window
-    window.open(authUrl, "_blank", "width=500,height=600");
+    // Open Twitter authentication in the main window
+    window.location.href = authUrl;  // This will redirect the user to Twitter for authentication
   };
 
   // Function to exchange the authorization code for an access token
@@ -33,7 +33,7 @@ const App = () => {
     params.append("client_id", "OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ");
     params.append("client_secret", "Mot-YuB2BVPX_oLfTEgyBQ4iSBfX2v1iFrieX3gMzQHrmAvv5N"); // Keep this safe!
     params.append("code", code);
-    params.append("redirect_uri", window.location.origin);
+    params.append("redirect_uri", window.location.origin);  // Same redirect URI as before
     params.append("grant_type", "authorization_code");
 
     try {
@@ -46,7 +46,7 @@ const App = () => {
       const data = await response.json();
 
       if (data.access_token) {
-        console.log("Data access_token ==>", data.access_token);
+        console.log("Access Token:", data.access_token);
         localStorage.setItem("twitterToken", data.access_token);
 
         // Fetch user details with the access token

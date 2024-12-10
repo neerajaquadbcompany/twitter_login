@@ -3,69 +3,46 @@ import { TwitterLoginButton } from "react-social-login-buttons";
 
 const App = () => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // This useEffect will handle the message event when the popup sends data back
-  useEffect(() => {
-    const messageHandler = (event) => {
-      if (event.origin !== window.location.origin) return;  // Check origin for security
-
-      const { token, user } = event.data;
-      if (token && user) {
-        localStorage.setItem("twitterToken", token); // Save token to localStorage
-        setUser(user); // Set the user data to display in the original window
-
-        // Close the popup after successful login
-        if (event.source) {
-          event.source.close();
-        }
-      }
-    };
-
-    // Listen for the message event from the popup window
-    window.addEventListener("message", messageHandler);
-
-    return () => {
-      window.removeEventListener("message", messageHandler);
-    };
-  }, []);
+  
 
   const handleLogin = async () => {
-    const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ&redirect_uri=${encodeURIComponent(
-      window.location.origin
-    )}&scope=tweet.read users.read&state=state123&code_challenge=challenge&code_challenge_method=plain`;
+    console.log("Opening Twitter login");
+    setLoading(true);
 
-    // Open Twitter login in a new window
-    const twitterWindow = window.open(authUrl, "_blank", "width=500,height=600");
+    const REDIRECT_URI = "http://localhost:3000/";
+    const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=tweet.read users.read&state=state123&code_challenge=challenge&code_challenge_method=plain`;
 
-    // Listen for the message from the popup
-    window.addEventListener("message", (event) => {
-      if (event.origin !== window.location.origin) return; // Verify the origin of the message
+    
+    window.location.href=authUrl;
 
-      const { token, user } = event.data;
-      if (token) {
-        localStorage.setItem("twitterToken", token);
-        setUser(user);  // Update state with user data
-
-        // Close the popup window after successful login
-        if (twitterWindow) {
-          twitterWindow.close();
-        }
+    const handleMessage = (event) => {
+      
+      const { code } = event.data;
+      if (code) {
+        
+        exchangeAuthorizationCodeForToken(code);
       }
-    });
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    
+    
   };
 
-  const exchangeAuthorizationCodeForToken = async (code) => {
+  const exchangeAuthorizationCodeForToken = async (code, twitterWindow) => {
     const tokenUrl = "https://api.twitter.com/oauth2/token";
 
     const params = new URLSearchParams();
     params.append("client_id", "OW1oUUVNT0xCT3UzNHpKUXphMUY6MTpjaQ");
-    params.append("client_secret", "Mot-YuB2BVPX_oLfTEgyBQ4iSBfX2v1iFrieX3gMzQHrmAvv5N"); // Keep this safe!
+    params.append("client_secret", "AYCD_-mJ7FWpLV6uECY7C8LpQubfY0T7Bf3Rds0lkUqZEOGpOH");
     params.append("code", code);
-    params.append("redirect_uri", window.location.origin);  // Same redirect URI as before
+    params.append("redirect_uri", "https://twitter-login-git-main-naru-neerajas-projects.vercel.app/"); 
     params.append("grant_type", "authorization_code");
 
     try {
-      // Fetch the token using the authorization code
       const response = await fetch(tokenUrl, {
         method: "POST",
         body: params,
@@ -77,19 +54,19 @@ const App = () => {
         console.log("Access Token:", data.access_token);
         localStorage.setItem("twitterToken", data.access_token);
 
-        // Fetch user details with the access token
+        
         fetchUserDetails(data.access_token);
 
-        // Send the access token and user data to the original window
-        window.opener.postMessage({ token: data.access_token, user: { name: "User", username: "user123" } }, window.location.origin); // Replace with actual user data
+        
       }
     } catch (error) {
       console.error("Error exchanging code for token:", error);
+      setLoading(false);
     }
   };
 
   const fetchUserDetails = async (accessToken) => {
-    const userUrl = "https://api.twitter.com/2/users/me";  // Twitter API endpoint for user details
+    const userUrl = "https://api.twitter.com/2/users/me"; 
 
     try {
       const response = await fetch(userUrl, {
@@ -102,11 +79,11 @@ const App = () => {
       const userData = await response.json();
       console.log("User details:", userData);
 
-      // Assuming the response has the user's name and username
       setUser({
         name: userData.data.name,
         username: userData.data.username,
       });
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
@@ -114,7 +91,9 @@ const App = () => {
 
   return (
     <div>
-      {!user ? (
+      {loading ? (
+        <p>Loading...</p> // Show loading state
+      ) : !user ? (
         <TwitterLoginButton onClick={handleLogin} />
       ) : (
         <div>
